@@ -8,9 +8,14 @@ int pressArr[4] = {0, 0, 0, 0}; //array that is pressed
 int randomArr[4] = {0, 0, 0, 0}; //randomized array that contains values that need to be checked
 
 int correct = 0; //amount correct from array
-volatile int btnPress = 0;
+volatile int btnPress = -1;
 int error = 0;
 volatile int lastPress = 0;
+
+volatile int red;
+volatile int green;
+volatile int blue;
+volatile int white;
 
 bool pressed = false;
 
@@ -36,9 +41,10 @@ void setup() {
 
 void loop() {
   if (pressed) {
-    Serial.println(btnPress);
-    if (btnPress == 4) {
-      btnPress = 0;
+    noInterrupts();
+    //Serial.println(btnPress);
+    if (btnPress == 3) {
+      btnPress = -1;
       /*
       bool sameArray = compareArray();
       if (sameArray) {
@@ -49,14 +55,17 @@ void loop() {
       }
       */
     } else {
-      //Serial.println(lastPress);
+      Serial.println(lastPress);
       pressArr[btnPress] = lastPress;
     }
     pressed = false;
+    interrupts();
   }
-
+  
   if (error == 5) {
+    noInterrupts();
     resetCode();
+    interrupts();
   }
 }
 
@@ -87,14 +96,15 @@ void randomize() {
 }
 
 void btnLedPress() {
-  if (btnPress < 4) {
+  //Serial.println("heelo");
+  if (btnPress < 3) {
     btnPress = btnPress + 1;
   }
-  
-  int red = digitalRead(BUTTONRED);
-  int green = digitalRead(BUTTONGREEN);
-  int blue = digitalRead(BUTTONBLUE);
-  int white = digitalRead(BUTTONWHITE);
+
+  red = digitalRead(BUTTONRED);
+  green = digitalRead(BUTTONGREEN);
+  blue = digitalRead(BUTTONBLUE);
+  white = digitalRead(BUTTONWHITE);
 
   if (red == HIGH) {
     lastPress = 0;
