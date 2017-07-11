@@ -8,9 +8,9 @@ int pressArr[4] = {0, 0, 0, 0}; //array that is pressed
 int randomArr[4] = {0, 0, 0, 0}; //randomized array that contains values that need to be checked
 
 int correct = 0; //amount correct from array
-int btnPress = 0;
-int errors = 0;
-int lastPress = 0;
+volatile int btnPress = 0;
+int error = 0;
+volatile int lastPress = 0;
 
 bool pressed = false;
 
@@ -20,7 +20,7 @@ void setup() {
   Serial.begin(9600); // debugging purposes\
 
   //Interrupt
-  attachInterrupt(digitalPinToInterrupt(BUTTONINTER), btnLedPress, HIGH);
+  attachInterrupt(digitalPinToInterrupt(BUTTONINTER), btnLedPress, RISING);
 
   //input pins
   pinMode(BUTTONRED, INPUT);
@@ -36,9 +36,10 @@ void setup() {
 
 void loop() {
   if (pressed) {
-    pressed = false;
+    Serial.println(btnPress);
     if (btnPress == 4) {
       btnPress = 0;
+      /*
       bool sameArray = compareArray();
       if (sameArray) {
         handleServo();
@@ -46,9 +47,12 @@ void loop() {
       } else {
         error = error + 1;
       }
+      */
     } else {
+      //Serial.println(lastPress);
       pressArr[btnPress] = lastPress;
     }
+    pressed = false;
   }
 
   if (error == 5) {
@@ -68,22 +72,29 @@ void resetCode() {
 
 //TODO
 bool compareArray() {
-  
+  for (int i = 0; i < 4; i++) {
+    if (pressArr[i] != randomArr[i]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void randomize() {
-  for (int x = 0; x < sizeof(randomArr) / sizeof(int); x++) {
+  for (int x = 0; x < 4; x++) {
     randomArr[x] = random(0, 4);
   }
 }
 
 void btnLedPress() {
+  if (btnPress < 4) {
+    btnPress = btnPress + 1;
+  }
+  
   int red = digitalRead(BUTTONRED);
   int green = digitalRead(BUTTONGREEN);
   int blue = digitalRead(BUTTONBLUE);
   int white = digitalRead(BUTTONWHITE);
-
-  pressed = true;
 
   if (red == HIGH) {
     lastPress = 0;
@@ -94,8 +105,6 @@ void btnLedPress() {
   } else if (white == HIGH) {
     lastPress = 3;
   }
-
-  if (btnPress < 4) {
-    btnPress = btnPress + 1;
-  }
+  
+  pressed = true;
 }
