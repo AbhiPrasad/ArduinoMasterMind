@@ -12,11 +12,6 @@ volatile int btnPress = -1;
 int error = 0;
 volatile int lastPress = 0;
 
-volatile int red;
-volatile int green;
-volatile int blue;
-volatile int white;
-
 bool pressed = false;
 
 void setup() {
@@ -27,12 +22,11 @@ void setup() {
   //Interrupt
   attachInterrupt(digitalPinToInterrupt(BUTTONINTER), btnLedPress, RISING);
 
-  //input pins
-  pinMode(BUTTONRED, INPUT);
-  pinMode(BUTTONGREEN, INPUT);
-  pinMode(BUTTONBLUE, INPUT);
-  pinMode(BUTTONWHITE, INPUT);
+  //interrupt buttons
   pinMode(BUTTONINTER, INPUT);
+  
+  //analog read
+  pinMode(A5, INPUT_PULLUP);
 
   //seeds random function
   randomSeed(analogRead(0));
@@ -41,7 +35,6 @@ void setup() {
 
 void loop() {
   if (pressed) {
-    noInterrupts();
     //Serial.println(btnPress);
     if (btnPress == 3) {
       btnPress = -1;
@@ -55,17 +48,14 @@ void loop() {
       }
       */
     } else {
-      Serial.println(lastPress);
+      //Serial.println(lastPress);
       pressArr[btnPress] = lastPress;
     }
     pressed = false;
-    interrupts();
   }
-  
+
   if (error == 5) {
-    noInterrupts();
     resetCode();
-    interrupts();
   }
 }
 
@@ -97,15 +87,16 @@ void randomize() {
 
 void btnLedPress() {
   //Serial.println("heelo");
-  if (btnPress < 3) {
+  if (btnPress < 4) {
     btnPress = btnPress + 1;
   }
+  
+  int color = analogRead(5);
+  
+  Serial.print("red ");
+  Serial.println(color);
 
-  red = digitalRead(BUTTONRED);
-  green = digitalRead(BUTTONGREEN);
-  blue = digitalRead(BUTTONBLUE);
-  white = digitalRead(BUTTONWHITE);
-
+  /*
   if (red == HIGH) {
     lastPress = 0;
   } else if (green == HIGH) {
@@ -115,6 +106,6 @@ void btnLedPress() {
   } else if (white == HIGH) {
     lastPress = 3;
   }
-  
+  */
   pressed = true;
 }
