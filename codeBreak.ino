@@ -1,7 +1,13 @@
-const int BUTTONRED = 9; // 0
-const int BUTTONGREEN = 10; // 1
-const int BUTTONBLUE = 11; // 2
-const int BUTTONWHITE = 12; // 3
+const int BUTTONRED = 9; // 0 red
+const int BUTTONGREEN = 10; // 1 green
+const int BUTTONBLUE = 11; // 2 blue 
+const int BUTTONWHITE = 12; // 3 white
+
+const int BUTTON1 = 4; 
+const int BUTTON2 = 5;
+const int BUTTON3 = 6;
+const int BUTTON4 = 7;
+
 const int BUTTONINTER = 2; // Interrupt Pin for Colored Buttons
 
 int pressArr[4] = {0, 0, 0, 0}; //array that is pressed
@@ -13,7 +19,7 @@ int error = 0;
 volatile int lastPress = 0;
 volatile int color = 0;
 
-bool pressed = false;
+bool pressed = false; //flag that changes when interrupt triggers
 
 void setup() {
 
@@ -26,7 +32,7 @@ void setup() {
   //Interrupt
   attachInterrupt(digitalPinToInterrupt(BUTTONINTER), btnLedPress, RISING);
 
-  //scores
+  // LED for button press
   pinMode(BUTTONRED, OUTPUT);
   pinMode(BUTTONGREEN, OUTPUT);
   pinMode(BUTTONBLUE, OUTPUT);
@@ -43,10 +49,6 @@ void setup() {
 void loop() {
   if (pressed) {
     btnPressFlash();
-    delay(1000);
-    noInterrupts();
-    //Serial.println(color);
-    //Serial.println(btnPress);
     Serial.print("button press: ");
     Serial.println(btnPress);
     if (btnPress == 3 ) {
@@ -63,7 +65,7 @@ void loop() {
       bool sameArray = compareArray();
       if (sameArray) {
         //handleServo();
-        //resetCode();
+        resetCode();
         Serial.println("Same array!");
       } else {
         error = error + 1;
@@ -74,7 +76,7 @@ void loop() {
       pressArr[btnPress] = lastPress;
     }
     pressed = false;
-    interrupts();
+    //interrupts();
   } else if (error == 5) {
     resetCode();
   }
@@ -85,19 +87,42 @@ void handleServo() {
   
 }
 
-//TODO
-void resetCode() {
+void victoryBlink() {
   
 }
 
 //TODO
+void resetCode() {
+  //randomize();
+  
+}
+
 bool compareArray() {
+  int err = 0;
   for (int i = 0; i < 4; i++) {
     if (pressArr[i] != randomArr[i]) {
-      return false;
+      err += 1;
     }
   }
-  return true;
+  if (err > 0) { //if arrays are different
+    flashCorrect(err);
+    return false;
+  } else {
+    return true;
+  }
+}
+
+void flashCorrect(int num) {
+  int temp = 0;
+  digitalWrite(BUTTON1, LOW); //4 off
+  digitalWrite(BUTTON2, LOW); // 5 off
+  digitalWrite(BUTTON3, LOW); // 6 off
+  digitalWrite(BUTTON4, LOW); // 7 off
+  
+  for (int j = 0; j < 4 - num; j++) { //cycles through and turns on if you got any correct
+    temp = j + 4;
+    digitalWrite(temp, HIGH);
+  }
 }
 
 void randomize() {
@@ -129,13 +154,14 @@ void btnPressFlash() {
 void btnLedPress() {
   color = analogRead(5);
 
-  if (color <= 979 && color >= 975) {
+// CHANGE BASED ON ACTUAL BUTTONS!!!!  
+  if (color <= 934 && color >= 930) {
     lastPress = 0;
-  } else if (color <= 931 && color >= 927) {
+  } else if (color <= 847 && color >= 843) {
     lastPress = 1;
-  } else if (color <= 984 && color >= 980) {
+  } else if (color <= 783 && color >= 779) {
     lastPress = 2;
-  } else if (color <= 740 && color >= 736) {
+  } else if (color <= 705 && color >= 701) {
     lastPress = 3;
   }
 
