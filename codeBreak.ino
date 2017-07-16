@@ -21,8 +21,8 @@ int randomArr[4] = {1, 1, 1, 1}; //randomized array that contains values that ne
 int correct = 0; //amount correct from array
 volatile int btnPress = -1;
 int error = 0;
-volatile int lastPress = 0;
-volatile int color = 0;
+volatile int lastPress = 0; //what color button was last pressd
+volatile int color = 0; //what is analog read from pin to decide what button was pressed
 
 bool pressed = false; //flag that changes when interrupt triggers
 
@@ -50,49 +50,28 @@ void setup() {
   pinMode(TIME5, OUTPUT);
   
   cli();
-  TCCR1A = 0;     // set entire TCCR1A register to 0
-  TCCR1B = 0;     // same for TCCR1B
+  TCCR1A = 0;     // set register to 0
+  TCCR1B = 0;     
   
   // set compare match register to desired timer count for 1 second
-  OCR1A = 15624;
+  OCR1A = 15624; //(1 sec/ (1 /(16Mhz/1024)) sec) - 1 = 15624
   
-  // turn on CTC mode:
-  TCCR1B |= (1 << WGM12);
+  TCCR1B |= (1 << WGM12); //turn on CTC - clear timer on compare
   
-  // Set CS10 and CS12 bits for 1024 prescaler:
+  //Set 1024 Prescaler 
   TCCR1B |= (1 << CS10);
   TCCR1B |= (1 << CS12);
   
-  // enable timer compare interrupt:
-  TIMSK1 |= (1 << OCIE1A);
+  TIMSK1 |= (1 << OCIE1A); //Enable interrupt
   
   sei();
-  
-  /*
-  
-  TCCR1A = 0;    // set entire TCCR1A register to 0
-  TCCR1B = 0;    // set entire TCCR1A register to 0
-  
-  TIMSK1 |= (1 << TOIE1); //allow for overflow interrupts
-  
-  TCCR1B |= (1 << CS10); // No prescaler
-  TCNT1 = 0x0BDC; //hex for 3035 65535-62500=3035 65535 - 2^16 - 1 and 62500 = 1 / 62500 Hz
-  
-  cli();
-  TCCR1B = 0;
-  TCCR1B = 4; // clk/256 freq 1/(16/64) = 0.04 seconds * 60 = 1500 / 5 = 300
-  //TIMSK1 |= 7; //enable OCR interrupts
-  OCR1A = 10; //12 seconds
-  sei();
-  // SHOULD BE 300
-  */
   
   //analog read
   pinMode(A5, INPUT_PULLUP);
 
   //seeds random function
   randomSeed(analogRead(0));
-  //randomize();
+  randomize();
 }
 
 void loop() {
@@ -112,12 +91,23 @@ void loop() {
     delay(10);
     btnPressFlash();
     Serial.print("button press: ");
-    Serial.println(btnPress);
+    
+    if (lastPress == 0) {
+      Serial.println("red");
+    } else if (lastPress == 1) {
+      Serial.println("blue");
+    } else if (lastPress == 2) {
+      Serial.println("green");
+    } else if (lastPress == 3) {
+      Serial.println("white");
+    }
+      
     if (btnPress == 3 ) {
       pressArr[btnPress] = lastPress;
       btnPress = -1;
       
-      // SERIAL PRINTING
+      /*
+      // SERIAL PRINTING DEBUGGING
       for (int i = 0; i < 4; i++) {
         Serial.print(pressArr[i]);
       }
@@ -126,6 +116,7 @@ void loop() {
         Serial.print(randomArr[i]);
       }
       Serial.println("");
+      */
       // SERIAL PRINTING END
       
       bool sameArray = compareArray();
@@ -142,7 +133,7 @@ void loop() {
     }
     pressed = false;
   } else if (error == 5) {
-    Serial.println("Wrong! Code Randomized"); 
+    Serial.println("Too many errors! Code Randomized"); 
     resetCode();
   }
 }
@@ -177,7 +168,7 @@ void changeTimeLights(int time) {
 
 ISR(TIMER1_COMPA_vect) {
   time = time + 1;
-  if (time == 3) {
+  if (time == 5) {
   	time = 0;
     turnOff = true;
   }
@@ -196,9 +187,14 @@ void victoryBlink() {
 
 //TODO
 void resetCode() {
+  cli();
+  initTimeLights();
+  time = 0;
   timeLight = 5;
   error = 0;
-  //randomize();
+  randomize();
+  sei();
+  
 }
 
 bool compareArray() {
