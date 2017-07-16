@@ -1,7 +1,12 @@
-const int BUTTONRED = 9; // 0 red
-const int BUTTONGREEN = 10; // 1 green
-const int BUTTONBLUE = 11; // 2 blue 
-const int BUTTONWHITE = 12; // 3 white
+const int BUTTONPRESS = 13; // 0 pressed button
+
+const int TIME1 = 12; 
+const int TIME2 = 11;
+const int TIME3 = 10; 
+const int TIME4 = 9; 
+const int TIME5 = 8;
+
+// 0 - red / 1 - green / 2 - blue / 3 - white
 
 const int BUTTON1 = 4; 
 const int BUTTON2 = 5;
@@ -21,6 +26,11 @@ volatile int color = 0;
 
 bool pressed = false; //flag that changes when interrupt triggers
 
+volatile int time = 0;
+int timeLight = 5;
+bool turnOff = false;
+bool startTimeLights = true;
+
 void setup() {
 
   // cli();
@@ -31,12 +41,33 @@ void setup() {
 
   //Interrupt
   attachInterrupt(digitalPinToInterrupt(BUTTONINTER), btnLedPress, RISING);
-
-  // LED for button press
-  pinMode(BUTTONRED, OUTPUT);
-  pinMode(BUTTONGREEN, OUTPUT);
-  pinMode(BUTTONBLUE, OUTPUT);
-  pinMode(BUTTONWHITE, OUTPUT);
+  
+  //Timer
+  pinMode(TIME1, OUTPUT);
+  pinMode(TIME2, OUTPUT);
+  pinMode(TIME3, OUTPUT);
+  pinMode(TIME4, OUTPUT);
+  pinMode(TIME5, OUTPUT);
+  
+  cli();
+  TCCR1A = 0;    // set entire TCCR1A register to 0
+  TCCR1B = 0;    // set entire TCCR1A register to 0
+  
+  TIMSK1 |= (1 << TOIE1); //alow for overflow interrupts
+  
+  TCCR1B |= (1 << CS10); // 100 for clk/2024 so that its 1 seconds per reset
+  TCNT1 = 0x0BDC; //hex for 3035 65535-62500=3035 65535 - 2^16 - 1 and 62500 = 1 / 62500 Hz
+  sei();
+  
+  /*
+  cli();
+  TCCR1B = 0;
+  TCCR1B = 4; // clk/256 freq 1/(16/64) = 0.04 seconds * 60 = 1500 / 5 = 300
+  //TIMSK1 |= 7; //enable OCR interrupts
+  OCR1A = 10; //12 seconds
+  sei();
+  // SHOULD BE 300
+  */
   
   //analog read
   pinMode(A5, INPUT_PULLUP);
@@ -47,13 +78,28 @@ void setup() {
 }
 
 void loop() {
+  if(startTimeLights) {
+  	startTimeLights = false;
+    initTimeLights();
+  }
+  
+  if (turnOff) {
+    turnOff = false;
+    Serial.println("Timer Light Off!");
+    timeLight = timeLight - 1;
+    changeTimeLights(timeLight);
+  }
+  
   if (pressed) {
+    delay(10);
     btnPressFlash();
     Serial.print("button press: ");
     Serial.println(btnPress);
     if (btnPress == 3 ) {
       pressArr[btnPress] = lastPress;
       btnPress = -1;
+      
+      // SERIAL PRINTING
       for (int i = 0; i < 4; i++) {
         Serial.print(pressArr[i]);
       }
@@ -62,39 +108,80 @@ void loop() {
         Serial.print(randomArr[i]);
       }
       Serial.println("");
+      // SERIAL PRINTING END
+      
       bool sameArray = compareArray();
       if (sameArray) {
         //handleServo();
         resetCode();
-        Serial.println("Same array!");
+        Serial.println("Right code!");
       } else {
         error = error + 1;
-        Serial.println("Wrong array");
+        Serial.println("Wrong code!");
       }
     } else {
-      //Serial.println(lastPress);
       pressArr[btnPress] = lastPress;
     }
     pressed = false;
-    //interrupts();
   } else if (error == 5) {
+    Serial.println("Wrong! Code Randomized"); 
     resetCode();
   }
 }
+
+//start timer leds
+void initTimeLights() {
+  digitalWrite(TIME1, HIGH);
+  digitalWrite(TIME2, HIGH);
+  digitalWrite(TIME3, HIGH);
+  digitalWrite(TIME4, HIGH);
+  digitalWrite(TIME5, HIGH);
+}
+
+void changeTimeLights(int time) {
+  digitalWrite(TIME1, LOW);
+  digitalWrite(TIME2, LOW);
+  digitalWrite(TIME3, LOW);
+  digitalWrite(TIME4, LOW);
+  digitalWrite(TIME5, LOW);
+  
+  int temp = 0;
+  if (time == 0) {
+    Serial.println("Ran out of time!");
+    resetCode();
+  } else {
+    for (int j = 0; j < time; j++) {
+      temp = j + 8;
+      digitalWrite(temp, HIGH);
+    }
+  }
+}
+
+ISR(TIMER1_OVF_vect) {
+  time = time + 1;
+  if (time == 500) {
+  	time = 0;
+    turnOff = true;
+  }
+  TCNT1=0x0BDC; // reload the timer preload
+}
+
 
 //TODO
 void handleServo() {
   
 }
 
+//TODO
 void victoryBlink() {
   
 }
 
 //TODO
 void resetCode() {
+  timeLight = 5;
+  error = 0;
   //randomize();
-  
 }
 
 bool compareArray() {
@@ -132,23 +219,9 @@ void randomize() {
 }
 
 void btnPressFlash() {
-  if (lastPress == 0) {
-    digitalWrite(BUTTONRED, HIGH);
-    delay(50);
-    digitalWrite(BUTTONRED, LOW);
-  } else if (lastPress == 1) {
-    digitalWrite(BUTTONGREEN, HIGH);
-    delay(50);
-    digitalWrite(BUTTONGREEN, LOW);
-  } else if (lastPress == 2) {
-    digitalWrite(BUTTONBLUE, HIGH);
-    delay(50);
-    digitalWrite(BUTTONBLUE, LOW);
-  } else if (lastPress == 3) {
-    digitalWrite(BUTTONWHITE, HIGH);
-    delay(50);
-    digitalWrite(BUTTONWHITE, LOW);
-  }
+  digitalWrite(BUTTONPRESS, HIGH);
+  delay(50);
+  digitalWrite(BUTTONPRESS, LOW);
 }
 
 void btnLedPress() {
