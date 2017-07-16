@@ -50,16 +50,34 @@ void setup() {
   pinMode(TIME5, OUTPUT);
   
   cli();
-  TCCR1A = 0;    // set entire TCCR1A register to 0
-  TCCR1B = 0;    // set entire TCCR1A register to 0
+  TCCR1A = 0;     // set entire TCCR1A register to 0
+  TCCR1B = 0;     // same for TCCR1B
   
-  TIMSK1 |= (1 << TOIE1); //alow for overflow interrupts
+  // set compare match register to desired timer count for 1 second
+  OCR1A = 15624;
   
-  TCCR1B |= (1 << CS10); // 100 for clk/2024 so that its 1 seconds per reset
-  TCNT1 = 0x0BDC; //hex for 3035 65535-62500=3035 65535 - 2^16 - 1 and 62500 = 1 / 62500 Hz
+  // turn on CTC mode:
+  TCCR1B |= (1 << WGM12);
+  
+  // Set CS10 and CS12 bits for 1024 prescaler:
+  TCCR1B |= (1 << CS10);
+  TCCR1B |= (1 << CS12);
+  
+  // enable timer compare interrupt:
+  TIMSK1 |= (1 << OCIE1A);
+  
   sei();
   
   /*
+  
+  TCCR1A = 0;    // set entire TCCR1A register to 0
+  TCCR1B = 0;    // set entire TCCR1A register to 0
+  
+  TIMSK1 |= (1 << TOIE1); //allow for overflow interrupts
+  
+  TCCR1B |= (1 << CS10); // No prescaler
+  TCNT1 = 0x0BDC; //hex for 3035 65535-62500=3035 65535 - 2^16 - 1 and 62500 = 1 / 62500 Hz
+  
   cli();
   TCCR1B = 0;
   TCCR1B = 4; // clk/256 freq 1/(16/64) = 0.04 seconds * 60 = 1500 / 5 = 300
@@ -157,13 +175,12 @@ void changeTimeLights(int time) {
   }
 }
 
-ISR(TIMER1_OVF_vect) {
+ISR(TIMER1_COMPA_vect) {
   time = time + 1;
-  if (time == 500) {
+  if (time == 3) {
   	time = 0;
     turnOff = true;
   }
-  TCNT1=0x0BDC; // reload the timer preload
 }
 
 
