@@ -71,12 +71,12 @@ void setup() {
 
   //seeds random function
   randomSeed(analogRead(0));
-  randomize();
+  //randomize();
 }
 
 void loop() {
   if(startTimeLights) {
-  	startTimeLights = false;
+    startTimeLights = false;
     initTimeLights();
   }
   
@@ -88,25 +88,23 @@ void loop() {
   }
   
   if (pressed) {
-    delay(10);
     btnPressFlash();
-    Serial.print("button press: ");
-    
+    cli();
+    /*
     if (lastPress == 0) {
       Serial.println("red");
     } else if (lastPress == 1) {
-      Serial.println("blue");
-    } else if (lastPress == 2) {
       Serial.println("green");
+    } else if (lastPress == 2) {
+      Serial.println("blue");
     } else if (lastPress == 3) {
       Serial.println("white");
     }
-      
-    if (btnPress == 3 ) {
+     */
+    if (btnPress == 3) {
       pressArr[btnPress] = lastPress;
       btnPress = -1;
       
-      /*
       // SERIAL PRINTING DEBUGGING
       for (int i = 0; i < 4; i++) {
         Serial.print(pressArr[i]);
@@ -116,7 +114,7 @@ void loop() {
         Serial.print(randomArr[i]);
       }
       Serial.println("");
-      */
+      
       // SERIAL PRINTING END
       
       bool sameArray = compareArray();
@@ -132,6 +130,8 @@ void loop() {
       pressArr[btnPress] = lastPress;
     }
     pressed = false;
+    sei();
+    delay(300);
   } else if (error == 5) {
     Serial.println("Too many errors! Code Randomized"); 
     resetCode();
@@ -147,7 +147,7 @@ void initTimeLights() {
   digitalWrite(TIME5, HIGH);
 }
 
-void changeTimeLights(int time) {
+void changeTimeLights(int timeLight) {
   digitalWrite(TIME1, LOW);
   digitalWrite(TIME2, LOW);
   digitalWrite(TIME3, LOW);
@@ -155,11 +155,11 @@ void changeTimeLights(int time) {
   digitalWrite(TIME5, LOW);
   
   int temp = 0;
-  if (time == 0) {
+  if (timeLight == 0) {
     Serial.println("Ran out of time!");
     resetCode();
   } else {
-    for (int j = 0; j < time; j++) {
+    for (int j = 0; j < timeLight; j++) {
       temp = j + 8;
       digitalWrite(temp, HIGH);
     }
@@ -169,11 +169,10 @@ void changeTimeLights(int time) {
 ISR(TIMER1_COMPA_vect) {
   time = time + 1;
   if (time == 5) {
-  	time = 0;
+    time = 0;
     turnOff = true;
   }
 }
-
 
 //TODO
 void handleServo() {
@@ -238,22 +237,30 @@ void btnPressFlash() {
 }
 
 void btnLedPress() {
+  
   color = analogRead(5);
-
+  
 // CHANGE BASED ON ACTUAL BUTTONS!!!!  
-  if (color <= 934 && color >= 930) {
+  if (color <= 979 && color >= 975) {
     lastPress = 0;
-  } else if (color <= 847 && color >= 843) {
+    if (btnPress < 3) {
+      btnPress = btnPress + 1;
+    }
+  } else if (color <= 931 && color >= 927) {
     lastPress = 1;
-  } else if (color <= 783 && color >= 779) {
+    if (btnPress < 3) {
+      btnPress = btnPress + 1;
+    }
+  } else if (color <= 894 && color >= 890) {
     lastPress = 2;
-  } else if (color <= 705 && color >= 701) {
+    if (btnPress < 3) {
+      btnPress = btnPress + 1;
+    }
+  } else if (color <= 740 && color >= 736) {
     lastPress = 3;
-  }
-
-  if (btnPress < 3) {
-    btnPress = btnPress + 1;
-  }
-
+    if (btnPress < 3) {
+      btnPress = btnPress + 1;
+    }
+  } 
   pressed = true;
 }
