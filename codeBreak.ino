@@ -17,7 +17,6 @@ int pressArr[4] = {0, 0, 0, 0}; //array that is pressed
 int randomArr[4] = {1, 1, 1, 1}; //randomized array that contains values that need to be checked
 int correctArr[4] = {0, 0, 0, 0};
 
-int correct = 0; //amount correct from array
 volatile int btnPress = -1;
 int error = 1;
 volatile int lastPress = 0; //what color button was last pressd
@@ -32,8 +31,6 @@ int timeLight = 5;
 bool turnOff = false;
 bool startTimeLights = true;
 
-int prevPress = 0;
-
 volatile bool on = false;
 bool start = true;
 
@@ -41,8 +38,7 @@ int score = 0;
 
 void setup() {
 
-  // cli();
-  Serial.begin(9600); // debugging purposes\
+  Serial.begin(9600);
 
   //interrupt buttons
   pinMode(BUTTONINTER, INPUT);
@@ -89,15 +85,15 @@ void loop() {
     Serial.print("Game Starting ");
     Serial.print("Time: ");
     Serial.println(infiniteTime);
-    Serial.print("Your score is: ");
-    Serial.print(score);
-    Serial.println(" seconds");
   } else if (!on && !start) { //if game is turned off
     turnOffLights();
     turnOffCorrect();
     Serial.print("Game Ending ");
     Serial.print("Time: ");
     Serial.println(infiniteTime);
+    Serial.print("Your score is: ");
+    Serial.print(score);
+    Serial.println(" seconds");
     start = true;
   }
   
@@ -195,6 +191,9 @@ void loop() {
     Serial.print("Too many errors! Restart! "); 
     Serial.print("Time: ");
     Serial.println(infiniteTime);
+    Serial.print("Your score is: ");
+    Serial.print(score);
+    Serial.println(" seconds");
     turnOffLights();
     turnOffCorrect();
     on = false;
@@ -314,11 +313,9 @@ void flashCorrect() {
 }
 
 void randomize() {
-  /*
   for (int x = 0; x < 4; x++) {
     randomArr[x] = random(0, 4);
   }
-  */
 }
 
 void btnLedPress() {
@@ -349,8 +346,6 @@ void btnLedPress() {
   } else if (color <= 802 && color >= 800) {
     on = !on;
     lastPress = -1;
-  } else {
-    lastPress = -2;
   }
   pressed = true;
 }
