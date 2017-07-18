@@ -19,11 +19,13 @@ int correctArr[4] = {0, 0, 0, 0};
 
 int correct = 0; //amount correct from array
 volatile int btnPress = -1;
-int error = 0;
+int error = 1;
 volatile int lastPress = 0; //what color button was last pressd
 volatile int color = 0; //what is analog read from pin to decide what button was pressed
 
 bool pressed = false; //flag that changes when interrupt triggers
+
+volatile unsigned long infiniteTime = 0;
 
 volatile int time = 0;
 int timeLight = 5;
@@ -34,6 +36,8 @@ int prevPress = 0;
 
 volatile bool on = false;
 bool start = true;
+
+int score = 0;
 
 void setup() {
 
@@ -75,18 +79,25 @@ void setup() {
 
   //seeds random function
   randomSeed(analogRead(0));
-  //randomize();
 }
 
 void loop() { 
   if(on && start) { //if game is turned on
-    start = false;
     resetCode();
-    Serial.println("Game Starting");
+    TCNT1 = 0;
+    start = false;
+    Serial.print("Game Starting ");
+    Serial.print("Time: ");
+    Serial.println(infiniteTime);
+    Serial.print("Your score is: ");
+    Serial.print(score);
+    Serial.println(" seconds");
   } else if (!on && !start) { //if game is turned off
     turnOffLights();
     turnOffCorrect();
-    Serial.println("Game Ending");
+    Serial.print("Game Ending ");
+    Serial.print("Time: ");
+    Serial.println(infiniteTime);
     start = true;
   }
   
@@ -98,26 +109,28 @@ void loop() {
   if (turnOff && !start) {
     turnOff = false;
     timeLight = timeLight - 1;
-    if (timeLight != 0) {
-      Serial.println("Turning off light");
-    }
     changeTimeLights(timeLight);
+    if (timeLight != 0) {
+      Serial.print("Turning off light ");
+      Serial.print("Time: ");
+      Serial.println(infiniteTime);
+    }
   }
   
   if (pressed && !start) {
     cli();
     if (btnPress == 3) {
-      if (lastPress != -1) {
+      if (lastPress > -1) {
         Serial.print("You pressed: ");
-      }
-      if (lastPress == 0) {
-        Serial.println("red");
-      } else if (lastPress == 1) {
-        Serial.println("green");
-      } else if (lastPress == 2) {
-        Serial.println("blue");
-      } else if (lastPress == 3) {
-        Serial.println("white");
+        if (lastPress == 0) {
+          Serial.println("red");
+        } else if (lastPress == 1) {
+          Serial.println("green");
+        } else if (lastPress == 2) {
+          Serial.println("blue");
+        } else if (lastPress == 3) {
+          Serial.println("white");
+        }
       }
       
       pressArr[btnPress] = lastPress;
@@ -130,12 +143,11 @@ void loop() {
         Serial.print(pressArr[i]);
       }
       Serial.println("");
-      /*
       for (int i = 0; i < 4; i++) {
         Serial.print(randomArr[i]);
       }
       Serial.println("");
-      */
+      
       // SERIAL PRINTING END
       
       bool sameArray = compareArray();
@@ -144,31 +156,45 @@ void loop() {
         start = true;
         turnOffLights();
         turnOffCorrect();
-        Serial.println("Right code! You won!");
+        Serial.print("Right code! You won! ");
+        Serial.print("Time: ");
+        score = infiniteTime;
+        Serial.println(infiniteTime);
+        Serial.print("Your score is: ");
+        Serial.print(score);
+        Serial.println(" seconds");
       } else {
         error = error + 1;
-        Serial.println("Wrong code!");
+        Serial.print("Wrong code! You have ");
+        Serial.print(error);
+        Serial.print(" errors ");
+        Serial.print("Time: ");
+        Serial.println(infiniteTime);
       }
     } else {
-      if (lastPress != -1) {
+      if (lastPress > -1) {
         Serial.print("You pressed: ");
-      }
-      if (lastPress == 0) {
-        Serial.println("red");
-      } else if (lastPress == 1) {
-        Serial.println("green");
-      } else if (lastPress == 2) {
-        Serial.println("blue");
-      } else if (lastPress == 3) {
-        Serial.println("white");
+        if (lastPress == 0) {
+          Serial.println("red");
+        } else if (lastPress == 1) {
+          Serial.println("green");
+        } else if (lastPress == 2) {
+          Serial.println("blue");
+        } else if (lastPress == 3) {
+          Serial.println("white");
+        }
       }
       
       pressArr[btnPress] = lastPress;
     }
     pressed = false;
     sei();
-  } else if (error == 5 && !start) {
-    Serial.println("Too many errors! Restart!"); 
+  } 
+  
+  if (error >= 5 && !start) {
+    Serial.print("Too many errors! Restart! "); 
+    Serial.print("Time: ");
+    Serial.println(infiniteTime);
     turnOffLights();
     turnOffCorrect();
     on = false;
@@ -203,7 +229,9 @@ void changeTimeLights(int timeLight) {
 
   int temp = 0;
   if (timeLight == 0) {
-    Serial.println("Ran out of time!");
+    Serial.println("Ran out of time! ");
+    Serial.print("Time: ");
+    Serial.println(infiniteTime);
     on = false;
     start = true;
     turnOffLights();
@@ -220,19 +248,29 @@ void changeTimeLights(int timeLight) {
 
 ISR(TIMER1_COMPA_vect) {
   time = time + 1;
-  if (time == 5) {
+  infiniteTime = infiniteTime + 1;
+  if (time == 7) {
     time = 0;
     turnOff = true;
   }
 }
 
 void resetCode() {
+  cli();
   time = 0;
   timeLight = 5;
   error = 0;
   btnPress = -1;
+  infiniteTime = 0;
+  correctArr[0] = 0;
+  correctArr[1] = 0;
+  correctArr[2] = 0;
+  correctArr[3] = 0;
+  turnOff = false;
   initTimeLights();
+  turnOffCorrect();
   randomize();
+  sei();
 }
 
 bool compareArray() {
@@ -276,9 +314,11 @@ void flashCorrect() {
 }
 
 void randomize() {
+  /*
   for (int x = 0; x < 4; x++) {
     randomArr[x] = random(0, 4);
   }
+  */
 }
 
 void btnLedPress() {
@@ -286,22 +326,22 @@ void btnLedPress() {
   color = analogRead(5);
   
 // CHANGE BASED ON ACTUAL BUTTONS!!!!  
-  if (color <= 979 && color >= 975) {
+  if (color <= 979 && color >= 975 && on) {
     lastPress = 0;
     if (btnPress < 3) {
       btnPress = btnPress + 1;
     }
-  } else if (color <= 931 && color >= 927) {
+  } else if (color <= 931 && color >= 927 && on) {
     lastPress = 1;
     if (btnPress < 3) {
       btnPress = btnPress + 1;
     }
-  } else if (color <= 894 && color >= 890) {
+  } else if (color <= 894 && color >= 890 && on) {
     lastPress = 2;
     if (btnPress < 3) {
       btnPress = btnPress + 1;
     }
-  } else if (color <= 740 && color >= 736) {
+  } else if (color <= 740 && color >= 736 && on) {
     lastPress = 3;
     if (btnPress < 3) {
       btnPress = btnPress + 1;
@@ -309,6 +349,8 @@ void btnLedPress() {
   } else if (color <= 802 && color >= 800) {
     on = !on;
     lastPress = -1;
+  } else {
+    lastPress = -2;
   }
   pressed = true;
 }
