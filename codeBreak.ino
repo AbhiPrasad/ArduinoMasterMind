@@ -1,5 +1,4 @@
 const int BUTTONPRESS = 13; // 0 pressed button
-
 const int TIME1 = 12; 
 const int TIME2 = 11;
 const int TIME3 = 10; 
@@ -30,6 +29,9 @@ volatile int time = 0;
 int timeLight = 5;
 bool turnOff = false;
 bool startTimeLights = true;
+
+volatile bool on = false;
+bool start = true;
 
 void setup() {
 
@@ -74,20 +76,31 @@ void setup() {
   //randomize();
 }
 
-void loop() {
-  if(startTimeLights) {
+void loop() { 
+  if(on && start) { //if game is turned on
+    start = false;
+    resetCode();
+    Serial.println("Game Starting");
+  } else if (!on && !start) { //if game is turned off
+    turnOffLights();
+    turnOffCorrect();
+    Serial.println("Game Ending");
+    start = true;
+  }
+  
+  if(startTimeLights && !start) {
     startTimeLights = false;
     initTimeLights();
   }
   
-  if (turnOff) {
+  if (turnOff && !start) {
     turnOff = false;
     Serial.println("Timer Light Off!");
     timeLight = timeLight - 1;
     changeTimeLights(timeLight);
   }
   
-  if (pressed) {
+  if (pressed && !start) {
     btnPressFlash();
     cli();
     /*
@@ -119,9 +132,12 @@ void loop() {
       
       bool sameArray = compareArray();
       if (sameArray) {
-        //handleServo();
-        resetCode();
-        Serial.println("Right code!");
+        on = false;
+        start = true;
+        turnOffLights();
+        turnOffCorrect();
+        victoryBlink();
+        Serial.println("Right code! You won!");
       } else {
         error = error + 1;
         Serial.println("Wrong code!");
@@ -132,9 +148,12 @@ void loop() {
     pressed = false;
     sei();
     delay(300);
-  } else if (error == 5) {
-    Serial.println("Too many errors! Code Randomized"); 
-    resetCode();
+  } else if (error == 5 && !start) {
+    Serial.println("Too many errors! Restart!"); 
+    turnOffLights();
+    turnOffCorrect();
+    on = false;
+    start = true;
   }
 }
 
@@ -147,6 +166,14 @@ void initTimeLights() {
   digitalWrite(TIME5, HIGH);
 }
 
+void turnOffLights() {
+  digitalWrite(TIME1, LOW);
+  digitalWrite(TIME2, LOW);
+  digitalWrite(TIME3, LOW);
+  digitalWrite(TIME4, LOW);
+  digitalWrite(TIME5, LOW);
+}
+
 void changeTimeLights(int timeLight) {
   digitalWrite(TIME1, LOW);
   digitalWrite(TIME2, LOW);
@@ -157,7 +184,10 @@ void changeTimeLights(int timeLight) {
   int temp = 0;
   if (timeLight == 0) {
     Serial.println("Ran out of time!");
-    resetCode();
+    on = false;
+    start = true;
+    turnOffLights();
+    turnOffCorrect();
   } else {
     for (int j = 0; j < timeLight; j++) {
       temp = j + 8;
@@ -174,26 +204,35 @@ ISR(TIMER1_COMPA_vect) {
   }
 }
 
-//TODO
-void handleServo() {
-  
-}
-
-//TODO
 void victoryBlink() {
+  digitalWrite(TIME1, HIGH);
+  delay(500);
+  digitalWrite(TIME1, LOW);
+
+  digitalWrite(TIME2, HIGH);
+  delay(500);
+  digitalWrite(TIME2, LOW);
+
+  digitalWrite(TIME3, HIGH);
+  delay(500);
+  digitalWrite(TIME3, LOW);
   
+  digitalWrite(TIME4, HIGH);
+  delay(500);
+  digitalWrite(TIME4, LOW);
+  
+  digitalWrite(TIME5, HIGH);
+  delay(5000);
+  digitalWrite(TIME5, LOW);
 }
 
 //TODO
 void resetCode() {
-  cli();
   initTimeLights();
   time = 0;
   timeLight = 5;
   error = 0;
   randomize();
-  sei();
-  
 }
 
 bool compareArray() {
@@ -211,6 +250,13 @@ bool compareArray() {
   }
 }
 
+void turnOffCorrect() {
+  digitalWrite(BUTTON1, LOW); //4 off
+  digitalWrite(BUTTON2, LOW); // 5 off
+  digitalWrite(BUTTON3, LOW); // 6 off
+  digitalWrite(BUTTON4, LOW); // 7 off
+}
+
 void flashCorrect(int num) {
   int temp = 0;
   digitalWrite(BUTTON1, LOW); //4 off
@@ -225,9 +271,11 @@ void flashCorrect(int num) {
 }
 
 void randomize() {
+  /*
   for (int x = 0; x < 4; x++) {
     randomArr[x] = random(0, 4);
   }
+  */
 }
 
 void btnPressFlash() {
@@ -261,6 +309,8 @@ void btnLedPress() {
     if (btnPress < 3) {
       btnPress = btnPress + 1;
     }
-  } 
+  } else if (color <= 802 && color >= 800) {
+    on = !on;
+  }
   pressed = true;
 }
