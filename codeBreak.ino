@@ -1,4 +1,3 @@
-const int BUTTONPRESS = 13; // 0 pressed button
 const int TIME1 = 12; 
 const int TIME2 = 11;
 const int TIME3 = 10; 
@@ -16,6 +15,7 @@ const int BUTTONINTER = 2; // Interrupt Pin for Colored Buttons
 
 int pressArr[4] = {0, 0, 0, 0}; //array that is pressed
 int randomArr[4] = {1, 1, 1, 1}; //randomized array that contains values that need to be checked
+int correctArr[4] = {0, 0, 0, 0};
 
 int correct = 0; //amount correct from array
 volatile int btnPress = -1;
@@ -29,6 +29,8 @@ volatile int time = 0;
 int timeLight = 5;
 bool turnOff = false;
 bool startTimeLights = true;
+
+int prevPress = 0;
 
 volatile bool on = false;
 bool start = true;
@@ -54,17 +56,17 @@ void setup() {
   cli();
   TCCR1A = 0;     // set register to 0
   TCCR1B = 0;     
-  
-  // set compare match register to desired timer count for 1 second
-  OCR1A = 15624; //(1 sec/ (1 /(16Mhz/1024)) sec) - 1 = 15624
+
+  TIMSK1 |= (1 << OCIE1A); //Enable interrupt
   
   TCCR1B |= (1 << WGM12); //turn on CTC - clear timer on compare
   
   //Set 1024 Prescaler 
+  TCCR1B |= (1 << CS12); // 101 or 4 for 1024
   TCCR1B |= (1 << CS10);
-  TCCR1B |= (1 << CS12);
-  
-  TIMSK1 |= (1 << OCIE1A); //Enable interrupt
+
+   // set compare match register to desired timer count for 1 second
+  OCR1A = 15624; //(1 sec/ (1 /(16Mhz/1024)) sec) - 1 = 15624
   
   sei();
   
@@ -95,39 +97,45 @@ void loop() {
   
   if (turnOff && !start) {
     turnOff = false;
-    Serial.println("Timer Light Off!");
     timeLight = timeLight - 1;
+    if (timeLight != 0) {
+      Serial.println("Turning off light");
+    }
     changeTimeLights(timeLight);
   }
   
   if (pressed && !start) {
-    btnPressFlash();
     cli();
-    /*
-    if (lastPress == 0) {
-      Serial.println("red");
-    } else if (lastPress == 1) {
-      Serial.println("green");
-    } else if (lastPress == 2) {
-      Serial.println("blue");
-    } else if (lastPress == 3) {
-      Serial.println("white");
-    }
-     */
     if (btnPress == 3) {
+      if (lastPress != -1) {
+        Serial.print("You pressed: ");
+      }
+      if (lastPress == 0) {
+        Serial.println("red");
+      } else if (lastPress == 1) {
+        Serial.println("green");
+      } else if (lastPress == 2) {
+        Serial.println("blue");
+      } else if (lastPress == 3) {
+        Serial.println("white");
+      }
+      
       pressArr[btnPress] = lastPress;
+      
       btnPress = -1;
       
       // SERIAL PRINTING DEBUGGING
+      Serial.print("Your code: ");
       for (int i = 0; i < 4; i++) {
         Serial.print(pressArr[i]);
       }
       Serial.println("");
+      /*
       for (int i = 0; i < 4; i++) {
         Serial.print(randomArr[i]);
       }
       Serial.println("");
-      
+      */
       // SERIAL PRINTING END
       
       bool sameArray = compareArray();
@@ -136,18 +144,29 @@ void loop() {
         start = true;
         turnOffLights();
         turnOffCorrect();
-        victoryBlink();
         Serial.println("Right code! You won!");
       } else {
         error = error + 1;
         Serial.println("Wrong code!");
       }
     } else {
+      if (lastPress != -1) {
+        Serial.print("You pressed: ");
+      }
+      if (lastPress == 0) {
+        Serial.println("red");
+      } else if (lastPress == 1) {
+        Serial.println("green");
+      } else if (lastPress == 2) {
+        Serial.println("blue");
+      } else if (lastPress == 3) {
+        Serial.println("white");
+      }
+      
       pressArr[btnPress] = lastPress;
     }
     pressed = false;
     sei();
-    delay(300);
   } else if (error == 5 && !start) {
     Serial.println("Too many errors! Restart!"); 
     turnOffLights();
@@ -157,7 +176,7 @@ void loop() {
   }
 }
 
-//start timer leds
+// start timer leds
 void initTimeLights() {
   digitalWrite(TIME1, HIGH);
   digitalWrite(TIME2, HIGH);
@@ -166,6 +185,7 @@ void initTimeLights() {
   digitalWrite(TIME5, HIGH);
 }
 
+//turn off timer leds
 void turnOffLights() {
   digitalWrite(TIME1, LOW);
   digitalWrite(TIME2, LOW);
@@ -180,7 +200,7 @@ void changeTimeLights(int timeLight) {
   digitalWrite(TIME3, LOW);
   digitalWrite(TIME4, LOW);
   digitalWrite(TIME5, LOW);
-  
+
   int temp = 0;
   if (timeLight == 0) {
     Serial.println("Ran out of time!");
@@ -191,7 +211,9 @@ void changeTimeLights(int timeLight) {
   } else {
     for (int j = 0; j < timeLight; j++) {
       temp = j + 8;
-      digitalWrite(temp, HIGH);
+      if (temp != 14) {
+        digitalWrite(temp, HIGH);
+      }
     }
   }
 }
@@ -204,34 +226,12 @@ ISR(TIMER1_COMPA_vect) {
   }
 }
 
-void victoryBlink() {
-  digitalWrite(TIME1, HIGH);
-  delay(500);
-  digitalWrite(TIME1, LOW);
-
-  digitalWrite(TIME2, HIGH);
-  delay(500);
-  digitalWrite(TIME2, LOW);
-
-  digitalWrite(TIME3, HIGH);
-  delay(500);
-  digitalWrite(TIME3, LOW);
-  
-  digitalWrite(TIME4, HIGH);
-  delay(500);
-  digitalWrite(TIME4, LOW);
-  
-  digitalWrite(TIME5, HIGH);
-  delay(5000);
-  digitalWrite(TIME5, LOW);
-}
-
-//TODO
 void resetCode() {
-  initTimeLights();
   time = 0;
   timeLight = 5;
   error = 0;
+  btnPress = -1;
+  initTimeLights();
   randomize();
 }
 
@@ -240,10 +240,12 @@ bool compareArray() {
   for (int i = 0; i < 4; i++) {
     if (pressArr[i] != randomArr[i]) {
       err += 1;
+    } else {
+      correctArr[i] = 1;
     }
   }
   if (err > 0) { //if arrays are different
-    flashCorrect(err);
+    flashCorrect();
     return false;
   } else {
     return true;
@@ -257,31 +259,26 @@ void turnOffCorrect() {
   digitalWrite(BUTTON4, LOW); // 7 off
 }
 
-void flashCorrect(int num) {
+void flashCorrect() {
   int temp = 0;
   digitalWrite(BUTTON1, LOW); //4 off
   digitalWrite(BUTTON2, LOW); // 5 off
   digitalWrite(BUTTON3, LOW); // 6 off
   digitalWrite(BUTTON4, LOW); // 7 off
   
-  for (int j = 0; j < 4 - num; j++) { //cycles through and turns on if you got any correct
+  for (int j = 0; j < 4; j++) { //cycles through and turns on if you got any correct
     temp = j + 4;
-    digitalWrite(temp, HIGH);
+    if (correctArr[j] == 1) {
+      correctArr[j] = 0;
+      digitalWrite(temp, HIGH);
+    }
   }
 }
 
 void randomize() {
-  /*
   for (int x = 0; x < 4; x++) {
     randomArr[x] = random(0, 4);
   }
-  */
-}
-
-void btnPressFlash() {
-  digitalWrite(BUTTONPRESS, HIGH);
-  delay(50);
-  digitalWrite(BUTTONPRESS, LOW);
 }
 
 void btnLedPress() {
@@ -311,6 +308,7 @@ void btnLedPress() {
     }
   } else if (color <= 802 && color >= 800) {
     on = !on;
+    lastPress = -1;
   }
   pressed = true;
 }
